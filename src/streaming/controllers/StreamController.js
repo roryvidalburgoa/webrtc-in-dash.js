@@ -119,7 +119,8 @@ function StreamController() {
         if (!webRtcHandler) {
             webRtcHandler = WebRtcHandler(context).getInstance();
             webRtcHandler.setConfig({
-                videoModel: videoModel
+                videoModel: videoModel,
+                webRtcConfig: settings.get().webRtc
             });
         }
 
@@ -194,6 +195,20 @@ function StreamController() {
     function load(url, startTime = NaN) {
         _checkConfig();
         providedStartTime = startTime;
+        
+        // For socket.io mode, bypass manifest loading
+        if (settings.get().webRtc.enabled && settings.get().webRtc.mode === 'socketio') {
+            // Update WebRTC handler config with latest settings before connecting
+            webRtcHandler.setConfig({
+                videoModel: videoModel,
+                webRtcConfig: settings.get().webRtc
+            });
+            const webRtcSucceeded = webRtcHandler.loadFromUrl(url);
+            if (webRtcSucceeded) {
+                return;
+            }
+        }
+        
         manifestLoader.load(url);
     }
 
@@ -1574,6 +1589,10 @@ function StreamController() {
         return streams;
     }
 
+    function getWebRtcHandler() {
+        return webRtcHandler;
+    }
+
     instance = {
         initialize,
         getActiveStreamInfo,
@@ -1595,6 +1614,7 @@ function StreamController() {
         getActiveStream,
         getInitialPlayback,
         getAutoPlay,
+        getWebRtcHandler,
         reset
     };
 

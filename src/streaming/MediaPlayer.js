@@ -1960,6 +1960,20 @@ function MediaPlayer() {
         return adapter;
     }
 
+    /**
+     * Returns the WebRTC handler for managing WebRTC connections.
+     *
+     * @returns {Object}
+     * @memberof module:MediaPlayer
+     * @instance
+     */
+    function getWebRtcHandler() {
+        if (streamController) {
+            return streamController.getWebRtcHandler();
+        }
+        return null;
+    }
+
     //***********************************
     // PRIVATE METHODS
     //***********************************
@@ -2382,6 +2396,7 @@ function MediaPlayer() {
         getCurrentTextTrackIndex,
         provideThumbnail,
         getDashAdapter,
+        getWebRtcHandler,
         getOfflineController,
         getSettings,
         updateSettings,

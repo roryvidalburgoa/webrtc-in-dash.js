@@ -943,7 +943,16 @@ function Settings() {
         },
         webRtc: {
             enabled: false,
-            dashOnFail: true
+            dashOnFail: true,
+            mode: 'whpp', // 'whpp' or 'socketio'
+            socketUrl: null, // Socket.io server URL (e.g., 'wss://camera.geometris.com')
+            serialNumber: null, // Device serial number
+            pin: null, // Authentication PIN
+            cameraIndex: 0, // Camera index (0 or 1)
+            debug: false, // Enable debug logging
+            iceServers: [ // ICE servers configuration
+                { urls: 'stun:stun.l.google.com:19302' }
+            ]
         },
         errors: {
             recoverAttempts: {

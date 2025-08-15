@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Geometris Camera Viewer</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="version" content="0.2024.0725.2" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src * 'unsafe-inline'; script-src * 'unsafe-inline'; style-src * 'unsafe-inline'; img-src * 'unsafe-inline'; font-src * 'unsafe-inline'; connect-src * 'unsafe-inline';" />
+  <!-- Import the Roboto font from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Import Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style type="text/css" id="geometris-page-styles">
+    /* Global dark theme with Roboto */
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: "Roboto", sans-serif;
+      background-color: #1e1e1e;
+      color: #ffffff;
+    }
+
+    body {
+      display: flex;
+      overflow: hidden;
+    }
+  </style>
+
+  <style type="text/css" id="geometris-camera-viewer-styles">
+    /* Action buttons container */
+    .action-buttons {
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+      margin-top: 4px;
+      margin-bottom: 10px;
+      align-items: center;
+    }
+
+    .action-buttons button {
+      height: 40px;
+      padding: 10px;
+      border: none;
+      background-color: #666666;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      color: white;
+      gap: 8px;
+    }
+
+    .action-buttons button:hover {
+      background-color: #555555;
+    }
+
+    .action-buttons button i {
+      font-size: 20px;
+      color: #ffffff;
+    }
+
+    /* Main content area */
+    .main {
+      flex: 1;
+      background-color: #1e1e1e;
+      display: flex;
+      flex-direction: column;
+      padding: 10px;
+      box-sizing: border-box;
+      color: white;
+    }
+
+    .video-container {
+      flex: 1;
+      background-color: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .row-video {
+      background-color: #000;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Video element styling - size will be set dynamically */
+    .remote-video {
+      object-fit: contain;
+    }
+
+    /* Mobile styling: assume a max-width breakpoint, or use a pointer media query */
+    @media only screen and (max-width: 768px) {
+      .video-container {
+        width: calc(100vw - 1px);
+        height: 100vh;
+      }
+
+      /* Make the video fill the container */
+      .remote-video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Main content area -->
+  <div class="main">
+    <div class="message-container" id="message-container"
+      style="display: flex; flex-direction: column; align-items: flex-start">
+      <span id="message">Loading video camera content.....</span>
+    </div>
+    <div class="video-container" id="video-container" style="display: none">
+      <div id="rowVideo" class="row-video">
+        <video class="remote-video" id="remoteVideo" autoplay playsinline webkit-playsinline muted controls></video>
+      </div>
+      <div id="rowControls" class="action-buttons">
+        <button id="callButton">
+          Re-call camera
+          <i class="fas fa-phone"></i>
+        </button>
+        <button id="switchCameraButton">
+          Switch camera
+          <i class="fas fa-exchange-alt"></i>
+        </button>
+        <span id="version-span">v. 0.0.5</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Link to external JavaScript -->
+  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+  <script>
+    let urlParams = undefined;
+    let cameraIndex = 0;
+
+    const debugSession = getQueryStringParamValue("debug") === "1" || false;
+
+    console.log(`Debug session: ${debugSession}`);
+
+    // Variables for PIN, connection, and RTCPeerConnection
+    let currentPin = debugSession ? "24816" : "94627";
+    let socket = null; // No connection until Connect is clicked.
+    let selectedCameraSerial = null;
+    let cameraSerialNumbers = [];
+    let pc = null;
+    let iceServers = [];
+
+    // fill version-span with current version
+    // current version from the meta tag version
+    const metaVersionTag = document.querySelector('meta[name="version"]');
+    let version = "";
+    if (metaVersionTag && metaVersionTag.content) {
+      version = "v. " + metaVersionTag.content;
+    }
+
+    document.getElementById("version-span").innerHTML = version;
+
+    document
+      .getElementById("callButton")
+      .addEventListener("click", callWebRTCServer);
+    document
+      .getElementById("switchCameraButton")
+      .addEventListener("click", clickSwitchCameraButton);
+
+    function getQueryStringParamValue(paramName) {
+      if (!urlParams) {
+        let search = window.location.search || window.embeddedQueryString;
+        urlParams = new URLSearchParams(search);
+      }
+
+      const queryStringValue =
+        urlParams.get(paramName) || urlParams.get(paramName.toLowerCase());
+      return queryStringValue;
+    }
+
+    // Prefill PIN input from URL if available.
+    currentPin = getQueryStringParamValue("pin") || currentPin;
+
+    // Prefill selected device and camera input from URL if available.
+    selectedCameraSerial =
+      getQueryStringParamValue("serialnumber") || selectedCameraSerial;
+
+    console.log(
+      "Selected camera:",
+      selectedCameraSerial,
+      " with pin: ",
+      currentPin
+    );
+
+    // Utility: Update connection indicator LED.
+    function updateConnectionIndicator(isConnected) {
+      const connectionIndicator = document.getElementById(
+        "connectionIndicator"
+      );
+
+      if (connectionIndicator) {
+        connectionIndicator.style.backgroundColor = isConnected
+          ? "green"
+          : "red";
+      }
+    }
+
+    updateConnectionIndicator(false); // Initially disconnected.
+
+    // Initialize and register Socket.IO connection.
+    function initializeSocket() {
+      webRTCServerUrl = debugSession ? "http://localhost" : "wss://camera.geometris.com";
+
+      console.info(`debugSession: ${debugSession}, webRTCServerUrl: ${webRTCServerUrl}`);
+      socket = io(webRTCServerUrl); // Replace with your server URL
+
+      // Socket.IO event handlers
+      socket.on("connect", () => {
+        console.log("Socket connected", socket.id);
+
+        updateConnectionIndicator(true);
+
+        console.log("Emitting 'register event on 'connect' event handler");
+        socket.emit("register", "admin", "admin", currentPin);
+
+        // Connect: Establish connection using entered PIN.
+        // console.log("Emitting register event on 'mainCameraViewerStart'...");
+        // socket.emit("register", "admin", "admin", currentPin);
+
+        clickRefreshDeviceCameraList();
+      });
+
+      socket.on("disconnect", () => {
+        console.log("Socket disconnected");
+        updateConnectionIndicator(false);
+      });
+
+      socket.on("cameras", (cameras) => {
+        console.info("Received cameras:", cameras, " from server: ", webRTCServerUrl);
+        updateCameraList(cameras);
+      });
+
+      socket.on("deviceConnected", (isDeviceConnected) => {
+        console.info(
+          "Received deviceConnected:",
+          isDeviceConnected,
+          " from server: ",
+          webRTCServerUrl
+        );
+
+        if (isDeviceConnected) {
+          updateCameraList([{ "role": "client", "serial": selectedCameraSerial }]);
+        } else {
+          updateCameraList([]);
+        }
+      });
+
+      socket.on("forcedDisconnect", (data) => {
+        console.log(
+          "Received forcedDisconnect:",
+          data,
+          " from server: ",
+          webRTCServerUrl
+        );
+
+        showMessage(
+          "Your call was disconnected: " +
+          (data.reason || "Another client connected.")
+        );
+      });
+
+      socket.on("signal", (data) => {
+        console.info(
+          "Received signal:",
+          data,
+          " from server: ",
+          webRTCServerUrl
+        );
+
+        if (!pc) return;
+        if (data.description) {
+          const description = data.description;
+          pc.setRemoteDescription(new RTCSessionDescription(description))
+            .then(() => {
+              try {
+                if (description.type === "offer" && (pc.signalingState === "have-remote-offer" || pc.signalingState === "have-local-pranswer")) {
+                  console.info("setRemoteDescription: Create answer. Signaling state:", pc.signalingState, "Description type:", description.type);
+                  const a1 = pc.createAnswer();
+                  console.info("created answer", a1.type, "Signaling state:", pc.signalingState, "Description type:", description.type);
+                  return a1;
+                }
+              } catch (error) {
+                console.error("setRemoteDescription: ", error);
+              }
+
+              console.info(`setRemoteDescription: ${JSON.stringify(description)}, Signaling state:`, pc.signalingState, "Description type:", description.type);
+              return null;
+            })
+            .then((answer) => {
+              try {
+                if (answer && pc.signalingState !== "stable") {
+                  console.info("Answer:", JSON.stringify(answer), "Signaling state:", pc.signalingState);
+                  return pc.setLocalDescription(answer);
+                }
+
+                console.info("Answer:", JSON.stringify(answer), "Signaling state:", pc.signalingState);
+              } catch (error) {
+                console.error("setLocalDescription: ", error);
+              }
+
+              return null;
+            })
+            .then(() => {
+              if (pc.localDescription) {
+                console.info("Sending signal", pc.localDescription, "Signaling state:", pc.signalingState, "Description type:", description.type);
+                socket.emit("signal", {
+                  role: "admin",
+                  description: pc.localDescription,
+                  target: selectedCameraSerial,
+                  pin: currentPin,
+                });
+              }
+            })
+            .catch((err) => console.error(`setRemoteDescription: ${err}, Signaling state: ${pc.signalingState}, Description type: ${description.type}`));
+        }
+
+        if (data.candidate) {
+          pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(
+            (err) => console.error(err)
+          );
+        }
+      });
+    }
+
+    // Update camera list in sidebar.
+    function updateCameraList(cameras) {
+      if (pc) {
+        console.log("Switching device. Closing existing connection.");
+        pc.close();
+        pc = null;
+        document.getElementById("remoteVideo").srcObject = null;
+      }
+
+      if (cameras.length < 1) {
+        showMessage(`No dashcam devices found for ${selectedCameraSerial}.`);
+        return;
+      }
+
+      cameraSerialNumbers = cameras.map((camera) => camera.serial);
+
+      if (cameraSerialNumbers.includes(selectedCameraSerial)) {
+        console.log("Serial number exists in the array");
+        callWebRTCServer();
+      } else {
+        showMessage(
+          `There isn't a camera for the device with serial number '${selectedCameraSerial}'.\r\nThis camera is not available.`
+        );
+      }
+    }
+
+
+    // Refresh button: Request updated camera list.
+    function clickRefreshDeviceCameraList() {
+      if (!socket) {
+        showMessage("Please connect first.");
+        return;
+      }
+
+      messageName = "isDeviceConnected";
+      console.log(
+        "Requesting device camera list refresh...",
+        messageName,
+        selectedCameraSerial,
+        currentPin
+      );
+
+      socket.emit(messageName, {
+        pin: currentPin,
+        serial: selectedCameraSerial,
+      });
+    }
+
+    // Switch Camera button: Send switchCamera command.
+    function clickSwitchCameraButton() {
+      if (!socket) {
+        showMessage("Please connect first.");
+        return;
+      }
+
+      if (selectedCameraSerial) {
+        cameraIndex = cameraIndex === 0 ? 1 : cameraIndex === 1 ? 0 : 0;
+        const payload = { pin: currentPin, cameraIndex: cameraIndex, target: selectedCameraSerial };
+
+        console.info(`Sending switchCamera command... to '${selectedCameraSerial}' (payload: ${JSON.stringify(payload)})`);
+        socket.emit("switchCamera", payload);
+      }
+    }
+
+    // Call button: Initiate a call with the selected camera.
+    function callWebRTCServer() {
+      if (!socket) {
+        showMessage("Please connect first.");
+        return;
+      }
+
+      if (!selectedCameraSerial) {
+        showMessage("Please provide a valid serial number first.");
+        return;
+      }
+
+      // On mobile devices, force full-screen and landscape orientation.
+      if (window.innerWidth < 768 || isMobileDevice()) {
+        goFullscreenAndLockLandscape();
+      }
+
+      if (pc) {
+        console.log(
+          "Closing existing connection before starting a new call."
+        );
+        pc.close();
+        pc = null;
+        document.getElementById("remoteVideo").srcObject = null;
+      }
+
+      createPeerConnection();
+      // The admin waits for an SDP offer from the camera (and then creates an answer).
+
+      const payload = {
+        target: selectedCameraSerial,
+        pin: currentPin,
+        cameraIndex: cameraIndex
+      }
+
+      console.log(`Requesting video call to '${selectedCameraSerial}' with payload:${JSON.stringify(payload)}`);
+      socket.emit("requestVideoCall", payload);
+    }
+
+    // Create a new RTCPeerConnection with ICE handling.
+    function createPeerConnection() {
+      iceServers = [
+        { urls: "stun:camera.geometris.com:3478" },
+        {
+          urls: "turn:camera.geometris.com:3478",
+          username: "devices",
+          credential: "A82*ndcBX",
+        },
+      ];
+
+      pc = new RTCPeerConnection({ iceServers });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate && socket) {
+          socket.emit("signal", {
+            role: "admin",
+            candidate: event.candidate,
+            target: selectedCameraSerial,
+            pin: currentPin,
+          });
+        }
+      };
+      pc.ontrack = (event) => {
+        showVideo(event.streams[0]);
+      };
+      return pc;
+    }
+
+    // function showVideo(stream) {
+    //   console.log("Showing video...");
+
+    //   const messages = document.getElementById("message-container");
+    //   messages.style.display = "none";
+
+    //   const videoContainer = document.getElementById("video-container");
+    //   videoContainer.style.display = "flex";
+
+    //   const video = document.getElementById("remoteVideo");
+    //   if (video.srcObject !== stream) {
+    //     console.log("Setting video source...");
+    //     video.srcObject = stream;
+    //   }
+    // }
+
+    function showVideo(stream) {
+      console.log("Showing video...");
+
+      const video = document.getElementById("remoteVideo");
+
+      if (video.srcObject !== stream) {
+        console.log("Setting video source...");
+        video.srcObject = stream;
+
+        // Wait for metadata (like dimensions) to be loaded
+        video.onloadedmetadata = () => {
+          console.log("Video metadata loaded.");
+          console.log("Stream active:", stream.active);
+
+          video.play(); // Start playback
+        };
+
+        // Wait until video is really ready before showing the container
+        video.oncanplay = () => {
+          console.log("Video can play.");
+          console.log("Stream active:", stream.active);
+          
+          const messages = document.getElementById("message-container");
+          messages.style.display = "none";
+
+          const videoContainer = document.getElementById("video-container");
+          videoContainer.style.display = "flex";
+        };
+      }
+    }
+
+
+    function showMessage(message) {
+      const messages = document.getElementById("message-container");
+      messages.style.display = "flex";
+
+      const videoContainer = document.getElementById("video-container");
+      videoContainer.style.display = "none";
+
+      const messageElement = document.getElementById("message");
+      messageElement.textContent = message;
+    }
+
+    // Function to lock orientation to landscape on mobile devices.
+    function lockLandscape() {
+      if (window.screen.orientation && window.screen.orientation.lock) {
+        window.screen.orientation.lock("landscape").catch((err) => {
+          console.warn("Orientation lock failed:", err);
+        });
+      }
+    }
+
+    function goFullscreenAndLockLandscape() {
+      lockLandscape();
+    }
+
+    function isMobileDevice() {
+      // Check user agent for common mobile keywords.
+      const ua = navigator.userAgent || navigator.vendor || window.opera;
+      const isMobileUA = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+
+      // Additionally, use matchMedia to check if the pointer is coarse.
+      const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+
+      return isMobileUA || isCoarsePointer;
+    }
+
+    // Helper to detect iOS devices.
+    function isIOS() {
+      return (
+        /iP(hone|od|ad)/.test(navigator.platform) ||
+        (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+      );
+    }
+
+    function updateVideoSize() {
+      const video = document.getElementById("remoteVideo");
+      const container = document.querySelector(".video-container");
+      const dpr = window.devicePixelRatio || 1;
+      const isMobile = isMobileDevice();
+      const isLandscape = window.innerWidth > window.innerHeight;
+
+      if (isMobile && isLandscape && !isIOS()) {
+        // On mobile in landscape, fill the container.
+        video.style.width = "100%";
+        video.style.height = "100%";
+      } else {
+        // Otherwise, set the video size based on its intrinsic dimensions.
+        if (video.videoWidth && video.videoHeight) {
+          const displayWidth = video.videoWidth / dpr;
+          const displayHeight = video.videoHeight / dpr;
+          video.style.width = displayWidth + "px";
+          video.style.height = displayHeight + "px";
+        }
+      }
+
+      // Center the video in the container.
+      // container.style.display = "flex";
+      container.style.alignItems = "center";
+      container.style.justifyContent = "center";
+      console.log(
+        `Video resized (landscape mobile: ${isMobile && isLandscape})`
+      );
+    }
+
+    // Video resizing: Adjust the video element's size based on its intrinsic resolution.
+    const remoteVideo = document.getElementById("remoteVideo");
+
+    remoteVideo.addEventListener("loadedmetadata", () => {
+      console.log(`Decoded resolution: ${remoteVideo.videoWidth}x${remoteVideo.videoHeight}`);
+
+      remoteVideo.play().catch((err) => {
+        console.warn("video.play() failed:", err);
+      });
+      updateVideoSize();
+    });
+
+    window.addEventListener("resize", updateVideoSize);
+
+    window.addEventListener("beforeunload", (event) => {
+      // Your custom logic here
+      console.log("Close connection before leaving the page!");
+
+      // Close the connection
+      if (socket) {
+        socket.disconnect();
+      }
+    });
+
+    function mainCameraViewerStart() {
+      if (!selectedCameraSerial) {
+        console.error("Please provide a valid serial number first.");
+        showMessage("Please provide a valid serial number first.");
+        return;
+      }
+
+      if (!currentPin) {
+        console.error("Please provide a valid PIN first.");
+        showMessage("Please provide a valid PIN first.");
+        return;
+      }
+
+      initializeSocket();
+    }
+
+    mainCameraViewerStart();
+  </script>
+</body>
+
+</html>
