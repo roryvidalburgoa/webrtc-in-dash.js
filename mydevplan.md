@@ -147,6 +147,12 @@ This implementation follows dash.js best practices and architectural patterns, p
 - Wrapped video element cleanup in try-catch
 - Properly handle cleanup on connection failure
 
+# Phase 8
+- create a npm package for publishing this fork
+- create a script that publish the npm package to most used servers
+- publish the npm package to the server fixing any error
+- create another web page demo on a dashJsReactJS folder that should use the last version of reactjs and the npm package we just created with the same behavior as dashDeploy/index.html demo page
+
 ## Implementation Details
 
 ### Files Modified:

@@ -1,9 +1,65 @@
-samples
-docs
-build/temp
-build/jsdoc
-test
-.travis.yml
+# Development and test files
+samples/
+test/
+coverage/
+reports/
 mochahook.js
-reports
-.idea
+.travis.yml
+
+# Build and configuration files
+build/
+webpack.*.js
+.eslintrc
+.babelrc
+tsconfig.json
+karma.conf.js
+
+# Documentation source
+docs/
+jsdoc/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git and CI files
+.github/
+.circleci/
+.git/
+.gitignore
+
+# Source maps in production (optional, remove if you want to include them)
+# *.map
+
+# Development scripts
+publish-npm.js
+githook.js
+
+# Project management files
+mydevplan.md
+CLAUDE.md
+
+# Node modules (should never be published)
+node_modules/
+
+# Local environment files
+.env
+.env.local
+
+# Log files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+.cache/
+temp/
+
+# Keep only the built files in dist/
+# DO NOT ignore dist/ as it contains the built library files!
