@@ -69,13 +69,32 @@ Click "Load Debug" for local development:
 - Socket URL: `http://localhost`
 - Debug Serial/PIN for testing
 
-### Sample DASH URLs
+### Available DASH Test Streams
 
-Click "Sample DASH URLs" to cycle through test streams:
-- Big Buck Bunny
-- Live Simulator
-- Envivio Test Stream
-- BBC Test Stream
+Select from the dropdown menu or enter a custom URL:
+
+1. **Big Buck Bunny (30fps)**
+   - URL: `https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd`
+   - Description: Popular test video with 30fps playback
+
+2. **Live Simulator (2s segments)**
+   - URL: `https://livesim.dashif.org/livesim/testpic_2s/Manifest.mpd`
+   - Description: Live streaming simulator with 2-second segments
+
+3. **Envivio Test Stream**
+   - URL: `https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd`
+   - Description: Standard test stream from Envivio
+
+4. **Tears of Steel (4K)**
+   - URL: `https://dash.akamaized.net/dash264/TestCasesIOP33/adapatationSetSwitching/5/manifest.mpd`
+   - Description: High-quality 4K test content
+
+5. **Sintel (Multi-audio)**
+   - URL: `https://dash.akamaized.net/dash264/TestCases/2c/qualcomm/1/MultiResMPEG2.mpd`
+   - Description: Test stream with multiple audio tracks
+
+6. **Custom URL**
+   - Select "Custom URL" from dropdown to enter your own DASH manifest URL
 
 ## Technologies Used
 

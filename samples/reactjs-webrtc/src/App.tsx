@@ -175,7 +175,7 @@ const App: React.FC = () => {
                             <h4>Source Code</h4>
                             <p>
                                 <a 
-                                    href="https://github.com/roryvidalburgoa/webrtc-in-dash.js/tree/webrtc-as-setting/samples/reactjs-webrtc"
+                                    href="https://github.com/roryvidalburgoa/webrtc-in-dash.js/tree/webrtc-socketio/samples/reactjs-webrtc"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="btn btn-link"
@@ -185,7 +185,7 @@ const App: React.FC = () => {
                                 </a>
                             </p>
                             <p className="text-muted">
-                                https://github.com/roryvidalburgoa/webrtc-in-dash.js/tree/webrtc-as-setting/samples/reactjs-webrtc
+                                https://github.com/roryvidalburgoa/webrtc-in-dash.js/tree/webrtc-socketio/samples/reactjs-webrtc
                             </p>
                         </div>
                     </div>
