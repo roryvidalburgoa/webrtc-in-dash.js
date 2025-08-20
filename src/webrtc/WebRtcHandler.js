@@ -329,6 +329,20 @@ function WebRtcHandler() {
             }
         };
         
+        /**
+         * ICE connection state change event handler. Called whenever the ICE connection
+         * state changes. Possible states are:
+         *
+         * - 'new': The ICE connection has just been created.
+         * - 'checking': The ICE connection is being checked.
+         * - 'connected': The ICE connection has been established successfully.
+         * - 'completed': The ICE connection has been fully established and is ready for use.
+         * - 'failed': The ICE connection failed to establish.
+         * - 'disconnected': The ICE connection was closed.
+         *
+         * @param {Event} event - The event object containing the new state of the ICE connection.
+         */
+
         webRtcPeer.oniceconnectionstatechange = () => {
             const state = webRtcPeer.iceConnectionState;
             debugLog('ICE connection state changed', { state: state });
@@ -341,7 +355,7 @@ function WebRtcHandler() {
                 });
                 // Optionally retry or notify the user
             } else if (state === 'disconnected') {
-                debugLog('ICE disconnected - connection may recover');
+                debugLog('ICE disconnected - device peer disconnected - connection may recover');
             } else if (state === 'connected' || state === 'completed') {
                 debugLog('ICE connection established successfully');
             }

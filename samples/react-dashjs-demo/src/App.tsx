@@ -22,7 +22,22 @@ const App: React.FC = () => {
   const [pin, setPin] = useState('94627');
   const [cameraIndex, setCameraIndex] = useState(0);
   const [debugMode, setDebugMode] = useState(true);
+  const [autoPlay, setAutoPlay] = useState(true);
   const [dashUrl, setDashUrl] = useState('https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd');
+  
+  // Predefined DASH URLs
+  const dashUrls = [
+    { label: 'Big Buck Bunny (30fps)', url: 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd' },
+    { label: 'Live Simulator (2s segments)', url: 'https://livesim.dashif.org/livesim/testpic_2s/Manifest.mpd' },
+    { label: 'Envivio Test Stream', url: 'https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd' },
+    { label: 'BBC Test Stream', url: 'https://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd' },
+    { label: 'Tears of Steel (4K)', url: 'https://dash.akamaized.net/dash264/TestCasesIOP33/adapatationSetSwitching/5/manifest.mpd' },
+    { label: 'Sintel (Multi-audio)', url: 'https://dash.akamaized.net/dash264/TestCases/2c/qualcomm/1/MultiResMPEG2.mpd' },
+    { label: 'Custom URL', url: 'custom' }
+  ];
+  
+  const [selectedDashOption, setSelectedDashOption] = useState('https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd');
+  const [customDashUrl, setCustomDashUrl] = useState('');
   const [iceServers, setIceServers] = useState(JSON.stringify([
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:camera.geometris.com:3478" },
@@ -124,12 +139,26 @@ const App: React.FC = () => {
         cameraIndex,
         debug: debugMode,
         iceServers: parsedIceServers
+      },
+      streaming: {
+        delay: {
+          liveDelay: 4
+        },
+        buffer: {
+          fastSwitchEnabled: true
+        }
       }
     });
 
     // Initialize player with dummy URL (not used in socket.io mode)
+    // The third parameter controls autoPlay
     if (videoRef.current) {
-      playerRef.current.initialize(videoRef.current, 'socket.io', false);
+      playerRef.current.initialize(videoRef.current, 'wss://camera.geometris.com', autoPlay);
+      
+      // If autoPlay is false, we need to manually handle play after connection
+      if (!autoPlay) {
+        console.log('AutoPlay is disabled. Video will not play automatically.');
+      }
     }
 
     setPendingConnection(true);
@@ -168,7 +197,12 @@ const App: React.FC = () => {
             setIsConnected(true);
             setIsWebRTCMode(true);
             
-            showStatus(`Connected to device ${serialNumber}`, 'success');
+            // Show appropriate message based on autoPlay setting
+            if (autoPlay) {
+              showStatus(`Connected to device ${serialNumber} - Video playing`, 'success');
+            } else {
+              showStatus(`Connected to device ${serialNumber} - Click "Play Video" to start`, 'success');
+            }
             
             // Start monitoring the connection
             startConnectionMonitoring();
@@ -287,8 +321,11 @@ const App: React.FC = () => {
   };
 
   const loadDashStream = () => {
-    if (!dashUrl) {
-      showStatus('Please enter a DASH manifest URL', 'error');
+    // Determine which URL to use
+    const urlToLoad = selectedDashOption === 'custom' ? customDashUrl : selectedDashOption;
+    
+    if (!urlToLoad) {
+      showStatus('Please select a DASH stream or enter a custom URL', 'error');
       return;
     }
 
@@ -338,11 +375,11 @@ const App: React.FC = () => {
           }
         });
 
-        console.log('Loading DASH stream:', dashUrl);
+        console.log('Loading DASH stream:', urlToLoad);
         showStatus('Loading DASH stream...', 'info');
 
         // Initialize with video element and URL
-        newPlayer.initialize(videoRef.current, dashUrl, true);
+        newPlayer.initialize(videoRef.current, urlToLoad, true);
 
         // Set up event listeners
         newPlayer.on(window.dashjs.MediaPlayer.events.PLAYBACK_STARTED, () => {
@@ -385,7 +422,8 @@ const App: React.FC = () => {
         credential: "A82*ndcBX"
       }
     ], null, 2));
-    setDashUrl('https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd');
+    setSelectedDashOption('https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd');
+    setCustomDashUrl('');
   };
 
   const loadDebugDefaults = () => {
@@ -397,19 +435,6 @@ const App: React.FC = () => {
     ], null, 2));
   };
 
-  const loadSampleDashUrls = () => {
-    const sampleUrls = [
-      'https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd',
-      'https://livesim.dashif.org/livesim/testpic_2s/Manifest.mpd',
-      'https://dash.akamaized.net/envivio/EnvivioDash3/manifest.mpd',
-      'https://rdmedia.bbc.co.uk/dash/ondemand/bbb/2/client_manifest-common_init.mpd'
-    ];
-
-    const currentIndex = sampleUrls.indexOf(dashUrl);
-    const nextIndex = (currentIndex + 1) % sampleUrls.length;
-    setDashUrl(sampleUrls[nextIndex]);
-    showStatus(`Sample URL loaded: ${nextIndex + 1} of ${sampleUrls.length}`, 'info');
-  };
 
   return (
     <div className="App">
@@ -473,14 +498,30 @@ const App: React.FC = () => {
           </div>
 
           <div className="form-group">
-            <label>DASH Stream URL (for testing DASH playback)</label>
-            <input
-              type="text"
-              value={dashUrl}
-              onChange={(e) => setDashUrl(e.target.value)}
-              placeholder="https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd"
-            />
-            <small>Enter a DASH manifest URL to test traditional DASH streaming</small>
+            <label>DASH Stream (for testing DASH playback)</label>
+            <select 
+              value={selectedDashOption} 
+              onChange={(e) => setSelectedDashOption(e.target.value)}
+              style={{ width: '100%', padding: '8px' }}
+            >
+              {dashUrls.map((item) => (
+                <option key={item.url} value={item.url}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            {selectedDashOption === 'custom' && (
+              <div style={{ marginTop: '10px' }}>
+                <input
+                  type="text"
+                  value={customDashUrl}
+                  onChange={(e) => setCustomDashUrl(e.target.value)}
+                  placeholder="Enter custom DASH manifest URL"
+                  style={{ width: '100%' }}
+                />
+              </div>
+            )}
+            <small>Select a test stream or choose "Custom URL" to enter your own</small>
           </div>
 
           <div className="form-group">
@@ -502,6 +543,19 @@ const App: React.FC = () => {
             >
               Connect WebRTC
             </button>
+            <div className="form-check" style={{ display: 'flex', alignItems: 'center', marginLeft: '15px' }}>
+              <input
+                type="checkbox"
+                className="form-check-input"
+                id="autoPlayCheck"
+                checked={autoPlay}
+                onChange={(e) => setAutoPlay(e.target.checked)}
+                style={{ marginRight: '5px' }}
+              />
+              <label className="form-check-label" htmlFor="autoPlayCheck" style={{ marginBottom: 0 }}>
+                Auto Play
+              </label>
+            </div>
             <button 
               onClick={disconnect} 
               disabled={!isConnected && !pendingConnection}
@@ -517,6 +571,19 @@ const App: React.FC = () => {
             >
               Switch Camera
             </button>
+            {isConnected && !autoPlay && (
+              <button 
+                onClick={() => {
+                  if (videoRef.current) {
+                    videoRef.current.play();
+                    showStatus('Playing video', 'success');
+                  }
+                }}
+                className="btn btn-success"
+              >
+                Play Video
+              </button>
+            )}
           </div>
 
           <div className="btn-group">
@@ -525,9 +592,6 @@ const App: React.FC = () => {
             </button>
             <button onClick={loadDebugDefaults} className="btn btn-secondary">
               Load Debug
-            </button>
-            <button onClick={loadSampleDashUrls} className="btn btn-secondary">
-              Sample DASH URLs
             </button>
             <button onClick={loadDashStream} className="btn btn-success">
               Load DASH Stream
@@ -544,7 +608,7 @@ const App: React.FC = () => {
         <div className="video-container">
           <video 
             ref={videoRef} 
-            autoPlay 
+            autoPlay={autoPlay}
             playsInline 
             muted 
             controls

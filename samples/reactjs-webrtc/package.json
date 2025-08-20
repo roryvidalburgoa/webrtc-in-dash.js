@@ -1,0 +1,32 @@
+{
+  "name": "dashcam-livefeed-app",
+  "version": "1.0.0",
+  "description": "Dashcam Live Feed React Application",
+  "main": "index.js",
+  "scripts": {
+    "start": "webpack serve --mode development --open",
+    "build": "webpack --mode production",
+    "serve": "serve -s dist"
+  },
+  "dependencies": {
+    "bootstrap": "^3.4.1",
+    "dashjs-webrtc-socketio": "file:dashjs-webrtc-socketio-4.4.2.tgz",
+    "jquery": "^3.6.0",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2"
+  },
+  "devDependencies": {
+    "@types/jquery": "^3.5.16",
+    "@types/react": "^17.0.0",
+    "@types/react-dom": "^17.0.0",
+    "css-loader": "^6.8.1",
+    "html-webpack-plugin": "^5.5.3",
+    "serve": "^14.2.0",
+    "style-loader": "^3.3.3",
+    "ts-loader": "^9.4.3",
+    "typescript": "^5.0.0",
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.0",
+    "webpack-dev-server": "^4.15.0"
+  }
+}

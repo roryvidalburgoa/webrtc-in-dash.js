@@ -13,8 +13,16 @@ A React-based demo application showcasing the dashjs-webrtc-socketio package wit
 
 ## Installation
 
+This demo uses the dash.js WebRTC Socket.io tarball package:
+
 ```bash
-# Install dependencies
+# From the main project root, create the tarball
+cd ..
+npm pack
+
+# Install dependencies in the React demo
+cd react-dashjs-demo
+npm install ../dashjs-webrtc-socketio-4.4.2.tgz
 npm install
 
 # Start development server
@@ -72,9 +80,23 @@ Click "Sample DASH URLs" to cycle through test streams:
 ## Technologies Used
 
 - React 19 with TypeScript
-- dashjs-webrtc-socketio package
+- dashjs-webrtc-socketio package (installed from tarball)
 - Socket.io client for WebRTC signaling
 - Webpack 5 for bundling
+
+## Development
+
+To update the dash.js library after making changes:
+
+```bash
+# In the main project root
+npm run build
+npm pack
+
+# In the react-dashjs-demo directory
+npm uninstall dashjs-webrtc-socketio
+npm install ../dashjs-webrtc-socketio-4.4.2.tgz
+```
 
 ## Package Structure
 
