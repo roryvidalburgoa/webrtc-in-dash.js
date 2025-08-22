@@ -68,8 +68,8 @@ player.updateSettings({
         enabled: true,
         mode: 'socketio',
         socketUrl: 'wss://camera.geometris.com',
-        serialNumber: '100150660001',
-        pin: '94627',
+        serialNumber: '100151819016',
+        apiKey: 'ey78ohn3556jb044677',
         cameraIndex: 0,  // 0 for front, 1 for back camera
         iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
@@ -112,7 +112,7 @@ The project uses Webpack for bundling with separate configs for dev (webpack.dev
 ## WebRTC Socket.io Protocol
 
 The Socket.io implementation follows this signaling flow:
-1. **Connection**: Client connects to socket server and registers with role, serial number, and PIN
+1. **Connection**: Client connects to socket server and registers with role, serial number, and apiKey
 2. **Device Discovery**: Server sends 'cameras' event with available devices
 3. **Call Initiation**: Client sends 'requestVideoCall' with target device and camera index
 4. **ICE/SDP Exchange**: Bidirectional 'signal' events for WebRTC negotiation

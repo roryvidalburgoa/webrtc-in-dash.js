@@ -11,7 +11,7 @@ Now that you have context we want to:
 
 # Phase 3 ✅ COMPLETED
 The current dash.js fork code has a JSON settings used to enable webrtc support: 
-- ✅ add more settings in order to select the socket.io version with ICE/SDP signals and custom signals described on cameraViewer.html file. You can select the ice servers, the webrtc url to use as socket server such as: wss://camera.geometris.com and other webrtc settings such as the PIN to use for example.
+- ✅ add more settings in order to select the socket.io version with ICE/SDP signals and custom signals described on cameraViewer.html file. You can select the ice servers, the webrtc url to use as socket server such as: wss://camera.geometris.com and other webrtc settings such as the APIKey to use for example.
 
 # Phase 4 ✅ COMPLETED
 - ✅ Integrate the new configuration to existing webrtchandler.js code and the webrtc+socket.io implementation and use it. This server doesn't need a md manifest for example.
@@ -24,7 +24,7 @@ The current dash.js fork code has a JSON settings used to enable webrtc support:
 All phases have been successfully completed:
 
 1. **Socket.io Integration**: Added socket.io-client dependency and implemented full WebRTC support via Socket.io in WebRtcHandler.js
-2. **Extended Settings**: Updated Settings.js to include comprehensive socket.io configuration options including mode, socketUrl, serialNumber, PIN, cameraIndex, and ICE servers
+2. **Extended Settings**: Updated Settings.js to include comprehensive socket.io configuration options including mode, socketUrl, serialNumber, APIKey, cameraIndex, and ICE servers
 3. **Dual Mode Support**: WebRtcHandler now supports both WHPP and Socket.io modes, selectable via the `mode` setting
 4. **No Manifest Required**: Socket.io mode bypasses manifest loading entirely when enabled
 5. **New Sample Application**: Created webrtc-socketio.html with full UI for testing Socket.io WebRTC connections
@@ -44,9 +44,9 @@ player.updateSettings({
         mode: 'socketio',
         socketUrl: 'wss://camera.geometris.com',
         serialNumber: '100150660001',
-        pin: '94627',
+        apiKey: 'nr94allfkrj4949knfj',
         cameraIndex: 0,
-        iceServers: [...]
+        iceServers: [{}...{}]
     }
 });
 ```
@@ -117,9 +117,9 @@ This implementation follows dash.js best practices and architectural patterns, p
 - Buttons now properly reflect connection status (Connect enabled when disconnected, Disconnect/Switch enabled when connected)
 
 ### 3. UI Values Not Updating in WebRtcHandler
-**Problem**: When users changed serial number or PIN in the UI, WebRtcHandler continued using old cached values.
+**Problem**: When users changed serial number or APIKey in the UI, WebRtcHandler continued using old cached values.
 **Solution**:
-- Modified setConfig() to update selectedCameraSerial and currentPin when config changes
+- Modified setConfig() to update selectedCameraSerial and apiKey when config changes
 - StreamController now calls setConfig() with latest settings before connecting
 - setupSocketIoClient() always uses fresh values from webRtcConfig
 - Added validation to ensure serial number is provided

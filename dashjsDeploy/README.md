@@ -65,7 +65,7 @@ docker run -p 80:80 dashjs-demo
 ### Default WebRTC Settings
 - **Socket Server**: wss://camera.geometris.com
 - **Serial Number**: 100151819016
-- **PIN**: 94627
+- **APIKey**: auyr847j4jid9djhd83hhd
 - **Camera Index**: 0 (Front) or 1 (Back)
 
 ### Default DASH Stream
@@ -87,7 +87,7 @@ docker run -p 80:80 dashjs-demo
 ## Usage
 
 1. **WebRTC Streaming**:
-   - Enter Socket.io server URL, serial number, and PIN
+   - Enter Socket.io server URL, serial number, and apiKey
    - Click "Connect WebRTC" to start streaming
    - Use "Switch Camera" to toggle between cameras
 
@@ -101,11 +101,10 @@ docker run -p 80:80 dashjs-demo
 You can pre-configure the application using URL parameters:
 
 - `?serialnumber=XXX` - Pre-fill device serial number
-- `?pin=XXX` - Pre-fill PIN
+- `?apiKey=XXX` - Pre-fill Encoded APIKey
 - `?debug=1` - Load debug settings
-- `?qa=0` - Load production defaults
 
-Example: `https://yourdomain.com/?serialnumber=100151819016&pin=94627`
+Example: `https://yourdomain.com/?serialnumber=100151819016&apiKey=jaskhdfkjhsuehas=`
 
 ## CORS Considerations
 

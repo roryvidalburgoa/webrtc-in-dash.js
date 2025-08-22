@@ -28,7 +28,7 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-import {WHPPClient} from '@eyevinn/whpp-client';
+import { WHPPClient } from '@eyevinn/whpp-client';
 import io from 'socket.io-client';
 import FactoryMaker from '../core/FactoryMaker';
 
@@ -40,12 +40,12 @@ function WebRtcHandler() {
         socket,
         webRtcConfig,
         selectedCameraSerial,
-        currentPin,
+        apiKey,
         debugLog,
         waitingForOffer = false;
 
     function setup() {
-        debugLog = function(message, data) {
+        debugLog = function (message, data) {
             if (webRtcConfig && webRtcConfig.debug) {
                 const timestamp = new Date().toISOString();
                 console.log(`[WebRTC ${timestamp}] ${message}`, data || '');
@@ -59,23 +59,23 @@ function WebRtcHandler() {
         }
         if (config.webRtcConfig) {
             webRtcConfig = config.webRtcConfig;
-            // Update the selectedCameraSerial and currentPin when config changes
+            // Update the selectedCameraSerial and current apiKey when config changes
             if (webRtcConfig.serialNumber) {
                 selectedCameraSerial = webRtcConfig.serialNumber;
             }
-            if (webRtcConfig.pin) {
-                currentPin = webRtcConfig.pin;
+            if (webRtcConfig.apiKey) {
+                apiKey = webRtcConfig.apiKey;
             }
             debugLog('WebRTC config set', {
                 ...webRtcConfig,
-                pin: currentPin ? '***' : 'not set'
+                apiKey: apiKey ? '***' : 'not set'
             });
         }
     }
 
     function loadFromManifest(manifest) {
         debugLog('loadFromManifest called', { mode: webRtcConfig?.mode, hasManifest: !!manifest });
-        
+
         // Check if we're using socket.io mode (no manifest required)
         if (webRtcConfig && webRtcConfig.mode === 'socketio') {
             debugLog('Socket.io mode detected, setting up client');
@@ -129,7 +129,7 @@ function WebRtcHandler() {
 
     function setupSocketIoClient() {
         debugLog('setupSocketIoClient called');
-        
+
         if (!webRtcConfig || !webRtcConfig.socketUrl) {
             console.error('Socket.io URL not configured');
             debugLog('ERROR: Socket.io URL not configured', webRtcConfig);
@@ -138,44 +138,45 @@ function WebRtcHandler() {
 
         // Always use the latest values from webRtcConfig
         selectedCameraSerial = webRtcConfig.serialNumber;
-        currentPin = webRtcConfig.pin;
-        
+        apiKey = webRtcConfig.apiKey;
+
         if (!selectedCameraSerial) {
             console.error('Serial number not provided');
             debugLog('ERROR: Serial number not provided');
             return false;
         }
-        
+
         debugLog('Connecting to Socket.io', {
             url: webRtcConfig.socketUrl,
             serialNumber: selectedCameraSerial,
-            pin: currentPin ? '***' : 'not set',
+            apiKey: apiKey ? '***' : 'not set',
             cameraIndex: webRtcConfig.cameraIndex
         });
-        
+
         // Close existing socket if any
         if (socket) {
             debugLog('Closing existing socket connection');
             socket.disconnect();
             socket = null;
         }
-        
+
         // Initialize new socket connection
         socket = io(webRtcConfig.socketUrl);
-        
+
         // Setup socket event handlers
         socket.on('connect', () => {
             console.log('Socket.io connected', socket.id);
             debugLog('Socket connected successfully', { socketId: socket.id });
-            
-            debugLog('Emitting register event', { role: 'admin', pin: currentPin ? '***' : 'not set' });
-            socket.emit('register', 'admin', 'admin', currentPin);
-            
+
+            const role = 'customer';
+            debugLog('Emitting register event', { role: role, apiKey: apiKey ? '***' : 'not set' });
+            socket.emit('register', role, role, apiKey);
+
             // Check if device is connected
             if (selectedCameraSerial) {
                 debugLog('Checking device connection', { serial: selectedCameraSerial });
                 socket.emit('isDeviceConnected', {
-                    pin: currentPin,
+                    apiKey: apiKey,
                     serial: selectedCameraSerial
                 });
             } else {
@@ -187,25 +188,25 @@ function WebRtcHandler() {
             console.log('Socket.io disconnected', reason);
             debugLog('Socket disconnected', { reason });
         });
-        
+
         socket.on('connect_error', (error) => {
             debugLog('Socket connection error', { error: error.message });
         });
 
         socket.on('deviceConnected', (isDeviceConnected) => {
             console.log('Device connected:', isDeviceConnected);
-            debugLog('Received deviceConnected event', { 
+            debugLog('Received deviceConnected event', {
                 isConnected: isDeviceConnected,
-                serial: selectedCameraSerial 
+                serial: selectedCameraSerial
             });
-            
+
             if (isDeviceConnected && selectedCameraSerial) {
                 debugLog('Device is connected, requesting video call');
                 requestVideoCall();
             } else {
-                debugLog('Device not connected or no serial', { 
+                debugLog('Device not connected or no serial', {
                     isDeviceConnected,
-                    hasSerial: !!selectedCameraSerial 
+                    hasSerial: !!selectedCameraSerial
                 });
             }
         });
@@ -213,14 +214,14 @@ function WebRtcHandler() {
         socket.on('cameras', (cameras) => {
             console.log('Available cameras:', cameras);
             debugLog('Received cameras list', { count: cameras?.length || 0, cameras });
-            
+
             if (cameras && cameras.length > 0) {
                 const cameraExists = cameras.some(cam => cam.serial === selectedCameraSerial);
-                debugLog('Checking if our camera exists', { 
+                debugLog('Checking if our camera exists', {
                     ourSerial: selectedCameraSerial,
-                    exists: cameraExists 
+                    exists: cameraExists
                 });
-                
+
                 if (cameraExists) {
                     debugLog('Camera found in list, requesting video call');
                     requestVideoCall();
@@ -246,11 +247,11 @@ function WebRtcHandler() {
             debugLog('Forced disconnect received', data);
             destroy();
         });
-        
+
         // Log all socket events for debugging
         if (webRtcConfig.debug) {
             const originalEmit = socket.emit;
-            socket.emit = function(...args) {
+            socket.emit = function (...args) {
                 debugLog('Socket EMIT', { event: args[0], data: args.slice(1) });
                 return originalEmit.apply(socket, args);
             };
@@ -261,7 +262,7 @@ function WebRtcHandler() {
 
     function requestVideoCall() {
         debugLog('requestVideoCall called');
-        
+
         if (!socket || !selectedCameraSerial) {
             console.error('Socket not connected or no camera selected');
             debugLog('ERROR: Cannot request video call', {
@@ -284,7 +285,7 @@ function WebRtcHandler() {
 
         const payload = {
             target: selectedCameraSerial,
-            pin: currentPin,
+            apiKey: apiKey,
             cameraIndex: webRtcConfig.cameraIndex || 0
         };
 
@@ -298,8 +299,8 @@ function WebRtcHandler() {
         const iceServers = webRtcConfig.iceServers || [
             { urls: 'stun:stun.l.google.com:19302' }
         ];
-        
-        debugLog('Creating RTCPeerConnection', { 
+
+        debugLog('Creating RTCPeerConnection', {
             iceServers: iceServers,
             configuration: {
                 iceServers: iceServers,
@@ -307,7 +308,7 @@ function WebRtcHandler() {
             }
         });
 
-        webRtcPeer = new RTCPeerConnection({ 
+        webRtcPeer = new RTCPeerConnection({
             iceServers: iceServers,
             iceCandidatePoolSize: 10
         });
@@ -322,17 +323,17 @@ function WebRtcHandler() {
                     role: 'admin',
                     candidate: event.candidate,
                     target: selectedCameraSerial,
-                    pin: currentPin
+                    apiKey: apiKey
                 });
             } else if (!event.candidate) {
                 debugLog('ICE gathering complete');
             }
         };
-        
+
         webRtcPeer.oniceconnectionstatechange = () => {
             const state = webRtcPeer.iceConnectionState;
             debugLog('ICE connection state changed', { state: state });
-            
+
             if (state === 'failed') {
                 console.error('WebRTC: ICE connection failed. Check your network connectivity and ICE server configuration.');
                 debugLog('ICE failure - possible causes:', {
@@ -346,11 +347,11 @@ function WebRtcHandler() {
                 debugLog('ICE connection established successfully');
             }
         };
-        
+
         webRtcPeer.onconnectionstatechange = () => {
             const state = webRtcPeer.connectionState;
             debugLog('Connection state changed', { state: state });
-            
+
             if (state === 'failed') {
                 console.error('WebRTC: Connection failed. The peer connection has failed and cannot recover.');
                 // Clean up the failed connection
@@ -359,7 +360,7 @@ function WebRtcHandler() {
                 }
             }
         };
-        
+
         webRtcPeer.onsignalingstatechange = () => {
             debugLog('Signaling state changed', { state: webRtcPeer.signalingState });
         };
@@ -370,15 +371,15 @@ function WebRtcHandler() {
                 id: event.track.id,
                 streams: event.streams.length
             });
-            
+
             if (event.streams && event.streams[0]) {
                 const videoElement = videoModel.getElement();
-                debugLog('Setting video srcObject', { 
+                debugLog('Setting video srcObject', {
                     hasVideoElement: !!videoElement,
-                    streamActive: event.streams[0].active 
+                    streamActive: event.streams[0].active
                 });
                 videoElement.srcObject = event.streams[0];
-                
+
                 // Log when video starts playing
                 videoElement.onloadedmetadata = () => {
                     debugLog('Video metadata loaded', {
@@ -386,7 +387,7 @@ function WebRtcHandler() {
                         height: videoElement.videoHeight
                     });
                 };
-                
+
                 videoElement.onplaying = () => {
                     debugLog('Video started playing');
                 };
@@ -409,16 +410,16 @@ function WebRtcHandler() {
                 type: description.type,
                 currentState: webRtcPeer.signalingState
             });
-            
+
             webRtcPeer.setRemoteDescription(new RTCSessionDescription(description))
                 .then(() => {
                     debugLog('Remote description set successfully', {
                         newState: webRtcPeer.signalingState
                     });
-                    
-                    if (description.type === 'offer' && 
-                        (webRtcPeer.signalingState === 'have-remote-offer' || 
-                         webRtcPeer.signalingState === 'have-local-pranswer')) {
+
+                    if (description.type === 'offer' &&
+                        (webRtcPeer.signalingState === 'have-remote-offer' ||
+                            webRtcPeer.signalingState === 'have-local-pranswer')) {
                         debugLog('Creating answer for offer');
                         return webRtcPeer.createAnswer();
                     }
@@ -452,7 +453,7 @@ function WebRtcHandler() {
                             role: 'admin',
                             description: webRtcPeer.localDescription,
                             target: selectedCameraSerial,
-                            pin: currentPin
+                            apiKey: apiKey
                         });
                     }
                 })
@@ -471,7 +472,7 @@ function WebRtcHandler() {
                 signalingState: webRtcPeer.signalingState,
                 remoteDescriptionSet: !!webRtcPeer.remoteDescription
             });
-            
+
             // Only add ICE candidates after remote description is set
             if (webRtcPeer.remoteDescription) {
                 webRtcPeer.addIceCandidate(new RTCIceCandidate(data.candidate))
@@ -502,7 +503,7 @@ function WebRtcHandler() {
         webRtcConfig.cameraIndex = cameraIndex;
 
         const payload = {
-            pin: currentPin,
+            apiKey: apiKey,
             cameraIndex: cameraIndex,
             target: selectedCameraSerial
         };
@@ -513,7 +514,7 @@ function WebRtcHandler() {
 
     function loadFromUrl(/* url */) {
         debugLog('loadFromUrl called', { mode: webRtcConfig?.mode });
-        
+
         // For socket.io mode, URL isn't used for manifest
         if (webRtcConfig && webRtcConfig.mode === 'socketio') {
             debugLog('Socket.io mode, setting up client');
@@ -527,24 +528,24 @@ function WebRtcHandler() {
         if (webRtcPeer) {
             const connectionState = webRtcPeer.connectionState;
             const iceState = webRtcPeer.iceConnectionState;
-            
+
             debugLog('Connection check', {
                 connectionState: connectionState,
                 iceState: iceState,
                 hasSocket: !!socket,
                 socketConnected: socket?.connected
             });
-            
+
             // Don't consider closed states as connected
             if (connectionState === 'closed' || connectionState === 'failed' ||
                 iceState === 'closed' || iceState === 'failed') {
                 return false;
             }
-            
+
             // Connection is established if peer connection is connected or completed
-            return (connectionState === 'connected' || 
-                    iceState === 'connected' || 
-                    iceState === 'completed');
+            return (connectionState === 'connected' ||
+                iceState === 'connected' ||
+                iceState === 'completed');
         }
         return false;
     }
@@ -553,7 +554,7 @@ function WebRtcHandler() {
         if (!webRtcPeer) {
             return { state: 'disconnected', details: 'No peer connection' };
         }
-        
+
         return {
             state: webRtcPeer.connectionState,
             iceState: webRtcPeer.iceConnectionState,
@@ -566,12 +567,12 @@ function WebRtcHandler() {
 
     function destroy() {
         debugLog('Destroying WebRTC handler');
-        
+
         if (webRtcPeer) {
             debugLog('Closing peer connection');
             webRtcPeer.close();
             webRtcPeer = null;
-            
+
             // Safely reset video element
             try {
                 const videoElement = videoModel?.getElement();
@@ -592,10 +593,10 @@ function WebRtcHandler() {
             socket.disconnect();
             socket = null;
         }
-        
+
         // Reset connection variables
         selectedCameraSerial = null;
-        currentPin = null;
+        apiKey = null;
         waitingForOffer = false;
     }
 

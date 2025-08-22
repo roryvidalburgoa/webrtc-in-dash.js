@@ -34,7 +34,7 @@ npm run build
 ### WebRTC Socket.io Mode
 
 1. Enter your Socket.io server URL (e.g., `wss://camera.geometris.com`)
-2. Enter the device serial number and PIN
+2. Enter the device serial number and apiKey
 3. Configure ICE servers if needed (JSON format)
 4. Click "Connect WebRTC" to start streaming
 5. Use "Switch Camera" to toggle between front/back cameras
@@ -52,14 +52,14 @@ npm run build
 Click "Load Defaults" to populate fields with production settings:
 - Socket URL: `wss://camera.geometris.com`
 - Serial Number: `100151819016`
-- PIN: `94627`
+- apiKey: `her8774kjddjpoiuru87`
 - ICE Servers: Google STUN + custom TURN server
 
 ### Debug Settings
 
 Click "Load Debug" for local development:
 - Socket URL: `http://localhost`
-- Debug Serial/PIN for testing
+- Debug Serial/apiKey for testing
 
 ### Sample DASH URLs
 
@@ -116,7 +116,7 @@ if (handler.isConnected()) {
 - Verify ICE servers are accessible
 - Check firewall settings for UDP traffic
 - Enable debug mode to see detailed logs in browser console
-- Ensure device is online and serial/PIN are correct
+- Ensure device is online and serial/apiKey are correct
 
 ### Common Errors
 
