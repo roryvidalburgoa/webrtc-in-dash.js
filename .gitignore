@@ -188,3 +188,5 @@ build/typings/
 
 # Vim
 .vimrc
+.claude
+.vs
