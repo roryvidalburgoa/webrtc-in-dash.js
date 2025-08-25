@@ -509,7 +509,7 @@ const App: React.FC = () => {
     const loadDefaults = () => {
         setSocketUrl("wss://camera.geometris.com");
         setSerialNumber("100151819016");
-        setApiKey("94627");
+        setApiKey("n4kwk2930jwjs9394");
         setIceServers(
             JSON.stringify(
                 [
@@ -534,7 +534,7 @@ const App: React.FC = () => {
     const loadDebugDefaults = () => {
         setSocketUrl("http://localhost");
         setSerialNumber("100151819016");
-        setApiKey("24816");
+        setApiKey("kiu3ik398jfj28484ks");
         setIceServers(
             JSON.stringify([{ urls: "stun:stun.l.google.com:19302" }], null, 2)
         );
@@ -581,7 +581,7 @@ const App: React.FC = () => {
                         <div className="form-group">
                             <label>APIKey</label>
                             <input
-                                type="text"
+                                type="password"
                                 value={apiKey}
                                 onChange={(e) => setApiKey(e.target.value)}
                                 placeholder="ne83247hdhiwe384jdh"
