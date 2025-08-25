@@ -80,7 +80,7 @@ const App: React.FC = () => {
                                         <ul style={{ marginTop: '10px', marginBottom: '0' }}>
                                             <li>Server: wss://camera.geometris.com</li>
                                             <li>Serial: 100151819016</li>
-                                            <li>PIN: 94627</li>
+                                            <li>APIKey: ne83247hdhiwe384jdh</li>
                                             <li>STUN/TURN servers configured</li>
                                         </ul>
                                     </div>

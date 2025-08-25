@@ -21,7 +21,7 @@ const App: React.FC = () => {
     // Form state
     const [socketUrl, setSocketUrl] = useState("wss://camera.geometris.com");
     const [serialNumber, setSerialNumber] = useState("100151819016");
-    const [pin, setPin] = useState("94627");
+    const [apiKey, setApiKey] = useState("ne83247hdhiwe384jdh");
     const [cameraIndex, setCameraIndex] = useState(0);
     const [debugMode, setDebugMode] = useState(true);
     const [autoPlay, setAutoPlay] = useState(true);
@@ -113,7 +113,7 @@ const App: React.FC = () => {
     };
 
     const connectSocketIo = () => {
-        if (!socketUrl || !serialNumber || !pin) {
+        if (!socketUrl || !serialNumber || !apiKey) {
             showStatus("Please fill in all required fields", "error");
             return;
         }
@@ -157,7 +157,7 @@ const App: React.FC = () => {
             mode: "socketio",
             socketUrl,
             serialNumber,
-            pin: "***",
+            apiKey: "***",
             cameraIndex,
             debug: debugMode,
         });
@@ -170,7 +170,7 @@ const App: React.FC = () => {
                 mode: "socketio",
                 socketUrl,
                 serialNumber,
-                pin,
+                apiKey: apiKey,
                 cameraIndex,
                 debug: debugMode,
                 iceServers: parsedIceServers,
@@ -509,7 +509,7 @@ const App: React.FC = () => {
     const loadDefaults = () => {
         setSocketUrl("wss://camera.geometris.com");
         setSerialNumber("100151819016");
-        setPin("94627");
+        setApiKey("94627");
         setIceServers(
             JSON.stringify(
                 [
@@ -534,7 +534,7 @@ const App: React.FC = () => {
     const loadDebugDefaults = () => {
         setSocketUrl("http://localhost");
         setSerialNumber("100151819016");
-        setPin("24816");
+        setApiKey("24816");
         setIceServers(
             JSON.stringify([{ urls: "stun:stun.l.google.com:19302" }], null, 2)
         );
@@ -579,12 +579,12 @@ const App: React.FC = () => {
                         </div>
 
                         <div className="form-group">
-                            <label>PIN</label>
+                            <label>APIKey</label>
                             <input
                                 type="text"
-                                value={pin}
-                                onChange={(e) => setPin(e.target.value)}
-                                placeholder="94627"
+                                value={apiKey}
+                                onChange={(e) => setApiKey(e.target.value)}
+                                placeholder="ne83247hdhiwe384jdh"
                             />
                         </div>
 
@@ -765,7 +765,7 @@ const App: React.FC = () => {
                             Enter your Socket.io server URL (e.g.,
                             wss://camera.geometris.com)
                         </li>
-                        <li>Enter the device serial number and PIN</li>
+                        <li>Enter the device serial number and apiKey</li>
                         <li>Optionally configure ICE servers in JSON format</li>
                         <li>Click "Connect" to start the WebRTC stream</li>
                         <li>

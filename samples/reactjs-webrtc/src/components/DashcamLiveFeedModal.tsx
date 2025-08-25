@@ -19,7 +19,7 @@ interface IWebRtcConfig {
     mode?: "socketio" | "whpp";
     socketUrl?: string;
     serialNumber?: string;
-    pin?: string;
+    apiKey?: string;
     cameraIndex?: number;
     debug?: boolean;
     iceServers?: Array<{
@@ -137,7 +137,7 @@ class DashcamLiveFeed extends React.Component<IDashcamLiveFeedProps> {
                     mode: "socketio",
                     socketUrl: "wss://camera.geometris.com",
                     serialNumber: "100151819016",
-                    pin: "94627",
+                    apiKey: "ne83247hdhiwe384jdh",
                     cameraIndex: parseInt(this.props.selectedCamera.CameraId) || 0,
                     debug: true,
                     iceServers: [

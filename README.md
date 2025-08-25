@@ -53,8 +53,8 @@ npm install /path/to/dashjs-webrtc-socketio-4.4.2.tgz
                 enabled: true,
                 mode: 'socketio', // socketio is required to use this mode and the rest of settings below
                 socketUrl: 'wss://camera.geometris.com',
-                serialNumber: '100151819016',  // Your device serial number
-                pin: '94627',                   // Your device PIN
+                serialNumber: '100151819016',   // Your device serial number
+                apiKey: 'ne83247hdhiwe384jdh',  // Your device apiKey
                 cameraIndex: 0,                 // 0 for front, 1 for back camera
                 debug: true,                    // Enable debug logging
                 iceServers: [

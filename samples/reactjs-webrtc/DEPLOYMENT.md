@@ -90,7 +90,7 @@ python -m SimpleHTTPServer 8000
 The application uses the following WebRTC configuration:
 - Server: `wss://camera.geometris.com`
 - Serial Number: `100151819016`
-- PIN: `94627`
+- APIKey: `ne83247hdhiwe384jdh`
 - STUN/TURN servers configured for ICE negotiation
 
 To modify these settings, edit `src/components/DashcamLiveFeedModal.tsx` before building.
