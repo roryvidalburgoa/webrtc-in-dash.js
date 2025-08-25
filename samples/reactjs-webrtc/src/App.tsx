@@ -25,7 +25,8 @@ const App: React.FC = () => {
                 // get serial number from the query string
                 const urlParams = new URLSearchParams(window.location.search);
                 const apiKey = atob(urlParams.get("apiKey"));
-                console.log("APIKey=====>>>", apiKey);
+                //console.log("APIKey=====>>>", apiKey);
+                
                 const serialNumber = urlParams.get("serialNumber");
 
                 const webrtcConfig: IWebRtcConfig | undefined = useWebRTC
