@@ -73,12 +73,25 @@ player.updateSettings({
         cameraIndex: 0,  // 0 for front, 1 for back camera
         iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
-            { urls: "turn:server:3478", username: "user", credential: "pass" }
-        ]
+            { urls: "stun:camera.geometris.com:3478" },
+            {
+                urls: "turn:camera.geometris.com:3478",
+                username: "devices",
+                credential: "A82*ndcBX"
+            }
+        ],
+        maxRetries: 3,    // Number of retry attempts on connection failure (default: 3)
+        retryDelay: 2000  // Delay between retries in milliseconds (default: 2000)
     }
 });
 ```
 In Socket.io mode, no manifest is required. The player establishes a direct WebRTC connection using Socket.io for signaling and the configured ICE servers for NAT traversal.
+
+**Enhanced Network Support:**
+- Default configuration includes multiple STUN/TURN servers for better connectivity in restrictive networks
+- Automatic retry logic attempts reconnection on ICE connection failures
+- Configurable retry parameters (`maxRetries` and `retryDelay`) for different network conditions
+- The library will automatically clean up and recreate peer connections on retry attempts
 
 #### Accessing WebRTC Handler
 The WebRTC handler can be accessed programmatically for advanced control:
@@ -179,6 +192,16 @@ If you encounter ICE connection failures:
 2. Verify STUN/TURN servers are accessible
 3. Test with Google's public STUN server: `stun:stun.l.google.com:19302`
 4. Enable debug mode to see detailed ICE candidate exchange
+5. Increase `maxRetries` for networks with intermittent connectivity
+6. Adjust `retryDelay` for slower networks (try 3000-5000ms)
+
+### Automatic Retry Behavior
+The library now includes automatic retry logic for restrictive networks:
+- When ICE connection fails, the library automatically retries with a fresh peer connection
+- Default: 3 retry attempts with 2-second delay between attempts
+- Console will show retry progress: `WebRTC: Retrying connection (attempt 1/3)...`
+- After max retries, error message: `WebRTC: Connection failed after 3 attempts`
+- Successful connections reset the retry counter for future failures
 
 ### Common Error Messages
 - **"Connection timeout - device did not respond"**: Device is offline or unreachable

@@ -42,7 +42,12 @@ function WebRtcHandler() {
         selectedCameraSerial,
         apiKey,
         debugLog,
-        waitingForOffer = false;
+        waitingForOffer = false,
+        connectionRetryCount = 0,
+        maxRetries = 3,
+        retryDelay = 2000,
+        connectionTimeout = null,
+        retryTimeout = null;
 
     function setup() {
         debugLog = function (message, data) {
@@ -66,9 +71,18 @@ function WebRtcHandler() {
             if (webRtcConfig.apiKey) {
                 apiKey = webRtcConfig.apiKey;
             }
+            // Configure retry parameters
+            if (webRtcConfig.maxRetries !== undefined) {
+                maxRetries = webRtcConfig.maxRetries;
+            }
+            if (webRtcConfig.retryDelay !== undefined) {
+                retryDelay = webRtcConfig.retryDelay;
+            }
             debugLog('WebRTC config set', {
                 ...webRtcConfig,
-                apiKey: apiKey ? '***' : 'not set'
+                apiKey: apiKey ? '***' : 'not set',
+                maxRetries: maxRetries,
+                retryDelay: retryDelay
             });
         }
     }
@@ -296,12 +310,24 @@ function WebRtcHandler() {
     }
 
     function createSocketIoPeerConnection() {
-        const iceServers = webRtcConfig.iceServers || [
-            { urls: 'stun:stun.l.google.com:19302' }
+        // Enhanced ICE server configuration for restrictive networks
+        const defaultIceServers = [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:camera.geometris.com:3478' },
+            {
+                urls: 'turn:camera.geometris.com:3478',
+                username: 'devices',
+                credential: 'A82*ndcBX'
+            }
         ];
 
+        const iceServers = webRtcConfig.iceServers || defaultIceServers;
+
         debugLog('Creating RTCPeerConnection', {
-            iceServers: iceServers,
+            iceServers: iceServers.map(server => ({
+                urls: server.urls,
+                hasCredentials: !!(server.username && server.credential)
+            })),
             configuration: {
                 iceServers: iceServers,
                 iceCandidatePoolSize: 10
@@ -346,19 +372,47 @@ function WebRtcHandler() {
 
         webRtcPeer.oniceconnectionstatechange = () => {
             const state = webRtcPeer.iceConnectionState;
-            debugLog('ICE connection state changed', { state: state });
+            debugLog('ICE connection state changed', {
+                state: state,
+                retryCount: connectionRetryCount,
+                maxRetries: maxRetries
+            });
 
             if (state === 'failed') {
                 console.error('WebRTC: ICE connection failed. Check your network connectivity and ICE server configuration.');
                 debugLog('ICE failure - possible causes:', {
                     message: 'Check firewall settings, STUN/TURN server availability, and network connectivity',
-                    iceServers: iceServers
+                    iceServers: iceServers.map(s => s.urls),
+                    retryCount: connectionRetryCount
                 });
-                // Optionally retry or notify the user
+
+                // Retry logic for restrictive networks
+                if (connectionRetryCount < maxRetries) {
+                    connectionRetryCount++;
+                    console.log(`WebRTC: Retrying connection (attempt ${connectionRetryCount}/${maxRetries})...`);
+                    debugLog('Scheduling connection retry', {
+                        attempt: connectionRetryCount,
+                        maxRetries: maxRetries,
+                        delay: retryDelay
+                    });
+
+                    retryTimeout = setTimeout(() => {
+                        debugLog('Executing retry', { attempt: connectionRetryCount });
+                        retryConnection();
+                    }, retryDelay);
+                } else {
+                    console.error(`WebRTC: Connection failed after ${maxRetries} attempts`);
+                    debugLog('Max retries reached, giving up', {
+                        attempts: connectionRetryCount
+                    });
+                }
             } else if (state === 'disconnected') {
                 debugLog('ICE disconnected - device peer disconnected - connection may recover');
             } else if (state === 'connected' || state === 'completed') {
                 debugLog('ICE connection established successfully');
+                // Reset retry counter on successful connection
+                connectionRetryCount = 0;
+                clearTimeouts();
             }
         };
 
@@ -411,10 +465,70 @@ function WebRtcHandler() {
         return webRtcPeer;
     }
 
-    function handleSocketSignal(data) {
-        if (!webRtcPeer) {
-            debugLog('WARNING: Received signal but no peer connection exists');
+    function clearTimeouts() {
+        if (connectionTimeout) {
+            clearTimeout(connectionTimeout);
+            connectionTimeout = null;
+        }
+        if (retryTimeout) {
+            clearTimeout(retryTimeout);
+            retryTimeout = null;
+        }
+    }
+
+    function retryConnection() {
+        debugLog('retryConnection called', {
+            hasSocket: !!socket,
+            hasSerial: !!selectedCameraSerial,
+            attempt: connectionRetryCount
+        });
+
+        if (!socket || !selectedCameraSerial) {
+            console.error('Cannot retry: Socket not connected or no camera selected');
             return;
+        }
+
+        // Close existing peer connection
+        if (webRtcPeer) {
+            debugLog('Closing failed peer connection before retry');
+            try {
+                webRtcPeer.close();
+            } catch (e) {
+                debugLog('Error closing peer connection', { error: e.message });
+            }
+            webRtcPeer = null;
+        }
+
+        // Create new peer connection
+        debugLog('Creating new peer connection for retry');
+        createSocketIoPeerConnection();
+
+        // Request new video call
+        const payload = {
+            target: selectedCameraSerial,
+            apiKey: apiKey,
+            cameraIndex: webRtcConfig.cameraIndex || 0
+        };
+
+        console.log(`Requesting video call (retry ${connectionRetryCount}/${maxRetries})`);
+        debugLog('Emitting requestVideoCall for retry', payload);
+        waitingForOffer = true;
+        socket.emit('requestVideoCall', payload);
+    }
+
+    function handleSocketSignal(data) {
+        // Handle case where peer connection is closed or doesn't exist when receiving an offer
+        if (!webRtcPeer || webRtcPeer.signalingState === 'closed') {
+            if (data.description && data.description.type === 'offer') {
+                debugLog('Received offer but peer connection is closed/missing, recreating', {
+                    hasPeer: !!webRtcPeer,
+                    signalingState: webRtcPeer?.signalingState
+                });
+                createSocketIoPeerConnection();
+            } else {
+                debugLog('WARNING: Received signal but no peer connection exists');
+                return;
+            }
         }
 
         if (data.description) {
@@ -582,6 +696,9 @@ function WebRtcHandler() {
     function destroy() {
         debugLog('Destroying WebRTC handler');
 
+        // Clear any pending timeouts
+        clearTimeouts();
+
         if (webRtcPeer) {
             debugLog('Closing peer connection');
             webRtcPeer.close();
@@ -612,6 +729,7 @@ function WebRtcHandler() {
         selectedCameraSerial = null;
         apiKey = null;
         waitingForOffer = false;
+        connectionRetryCount = 0;
     }
 
     instance = {

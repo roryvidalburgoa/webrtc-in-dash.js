@@ -950,9 +950,17 @@ function Settings() {
             apiKey: null, // Authentication customer api key
             cameraIndex: 0, // Camera index (0 or 1)
             debug: false, // Enable debug logging
-            iceServers: [ // ICE servers configuration
-                { urls: 'stun:stun.l.google.com:19302' }
-            ]
+            iceServers: [ // ICE servers configuration (defaults include multiple servers for restrictive networks)
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:camera.geometris.com:3478' },
+                {
+                    urls: 'turn:camera.geometris.com:3478',
+                    username: 'devices',
+                    credential: 'A82*ndcBX'
+                }
+            ],
+            maxRetries: 3, // Maximum number of connection retry attempts
+            retryDelay: 2000 // Delay in milliseconds between retry attempts
         },
         errors: {
             recoverAttempts: {

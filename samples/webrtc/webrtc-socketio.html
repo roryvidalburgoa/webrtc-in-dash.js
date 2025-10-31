@@ -168,6 +168,8 @@
             const apiKey = document.getElementById('apiKey').value;
             const cameraIndex = parseInt(document.getElementById('cameraIndex').value);
             const debugMode = document.getElementById('debugMode').checked;
+            const maxRetries = parseInt(document.getElementById('maxRetries').value);
+            const retryDelay = parseInt(document.getElementById('retryDelay').value);
 
             if (!socketUrl || !serialNumber || !apiKey) {
                 showStatus('Please fill in all required fields', 'error');
@@ -187,15 +189,15 @@
                 if (iceServersText.trim()) {
                     iceServers = JSON.parse(iceServersText);
                 } else {
-                    // Use default ICE servers with fallback
+                    // Use default ICE servers with fallback (matches WebRtcHandler.js defaults)
                     iceServers = [
+                        { urls: "stun:stun.l.google.com:19302" },
                         { urls: "stun:camera.geometris.com:3478" },
                         {
                             urls: "turn:camera.geometris.com:3478",
                             username: "devices",
                             credential: "A82*ndcBX"
-                        },
-                        { urls: "stun:stun.l.google.com:19302" }  // Google's public STUN server as fallback
+                        }
                     ];
                 }
             } catch (e) {
@@ -212,10 +214,13 @@
                 serialNumber: serialNumber,
                 apiKey: '***',
                 cameraIndex: cameraIndex,
-                debug: debugMode
+                debug: debugMode,
+                maxRetries: maxRetries,
+                retryDelay: retryDelay,
+                iceServersCount: iceServers.length
             });
 
-            // Configure player for socket.io WebRTC
+            // Configure player for socket.io WebRTC with retry support
             player.updateSettings({
                 webRtc: {
                     enabled: true,
@@ -226,7 +231,9 @@
                     apiKey: apiKey,
                     cameraIndex: cameraIndex,
                     debug: debugMode,
-                    iceServers: iceServers
+                    iceServers: iceServers,
+                    maxRetries: maxRetries,
+                    retryDelay: retryDelay
                 }
             });
 
@@ -384,7 +391,9 @@
             document.getElementById('socketUrl').value = 'wss://camera.geometris.com';
             document.getElementById('serialNumber').value = '100151819016';
             document.getElementById('apiKey').value = 'ne278euu3993jdnn39jd8';
+            // ICE servers ordered to match WebRtcHandler.js defaults
             document.getElementById('iceServers').value = JSON.stringify([
+                { urls: "stun:stun.l.google.com:19302" },
                 { urls: "stun:camera.geometris.com:3478" },
                 {
                     urls: "turn:camera.geometris.com:3478",
@@ -392,6 +401,9 @@
                     credential: "A82*ndcBX"
                 }
             ], null, 2);
+            // Set default retry parameters
+            document.getElementById('maxRetries').value = 3;
+            document.getElementById('retryDelay').value = 2000;
             // Add default DASH URL
             document.getElementById('dashUrl').value = 'https://dash.akamaized.net/akamai/bbb_30fps/bbb_30fps.mpd';
         }
@@ -560,6 +572,21 @@
                             <label for="iceServers">ICE Servers (JSON)</label>
                             <textarea id="iceServers" class="form-control" rows="6"
                                 placeholder='[{"urls": "stun:stun.l.google.com:19302"}]'></textarea>
+                            <small class="form-text text-muted">Configure STUN/TURN servers for restrictive networks. Default includes camera.geometris.com and Google STUN servers.</small>
+                        </div>
+
+                        <div class="settings-row">
+                            <div class="form-group">
+                                <label for="maxRetries">Max Connection Retries</label>
+                                <input type="number" id="maxRetries" class="form-control" value="3" min="0" max="10">
+                                <small class="form-text text-muted">Number of retry attempts on connection failure (default: 3)</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="retryDelay">Retry Delay (ms)</label>
+                                <input type="number" id="retryDelay" class="form-control" value="2000" min="500" max="10000" step="500">
+                                <small class="form-text text-muted">Delay between retry attempts in milliseconds (default: 2000ms)</small>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -628,9 +655,17 @@
                         <ul>
                             <li>Enter your Socket.io server URL (e.g., wss://camera.geometris.com)</li>
                             <li>Enter the device serial number and APIKey</li>
-                            <li>Optionally configure ICE servers in JSON format</li>
+                            <li>Optionally configure ICE servers in JSON format for restrictive networks</li>
+                            <li>Configure retry settings: max attempts (default: 3) and delay between retries (default: 2000ms)</li>
                             <li>Click "Connect" to start the WebRTC stream</li>
+                            <li>The library will automatically retry on connection failure with configured settings</li>
                             <li>Use "Switch Camera" to toggle between front and back cameras</li>
+                        </ul>
+                        <h5>Restrictive Network Support:</h5>
+                        <ul>
+                            <li>Default configuration includes multiple STUN/TURN servers for better connectivity</li>
+                            <li>Automatic retry logic helps establish connections in challenging network conditions</li>
+                            <li>Configure additional ICE servers if your network requires specific TURN servers</li>
                         </ul>
                         <p><strong>URL Parameters:</strong></p>
                         <ul>
