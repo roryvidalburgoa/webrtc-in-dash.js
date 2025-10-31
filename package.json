@@ -1,6 +1,6 @@
 {
     "name": "dashjs-webrtc-socketio",
-    "version": "4.4.2",
+    "version": "4.4.3",
     "description": "A fork of dash.js with WebRTC streaming support via WHPP and Socket.io for real-time video playback",
     "author": "Dash Industry Forum (original), WebRTC Extensions",
     "license": "BSD-3-Clause",
