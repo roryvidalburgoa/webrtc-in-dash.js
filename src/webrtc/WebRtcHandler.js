@@ -45,9 +45,10 @@ function WebRtcHandler() {
         waitingForOffer = false,
         connectionRetryCount = 0,
         maxRetries = 3,
-        retryDelay = 2000,
+        retryDelay = 10000,
         connectionTimeout = null,
-        retryTimeout = null;
+        retryTimeout = null,
+        pendingIceCandidates = [];
 
     function setup() {
         debugLog = function (message, data) {
@@ -293,6 +294,14 @@ function WebRtcHandler() {
             webRtcPeer = null;
         }
 
+        // Clear any pending ICE candidates from previous connection
+        if (pendingIceCandidates.length > 0) {
+            debugLog('Clearing pending ICE candidates from previous connection', {
+                count: pendingIceCandidates.length
+            });
+            pendingIceCandidates = [];
+        }
+
         // Create new peer connection
         debugLog('Creating new peer connection');
         createSocketIoPeerConnection();
@@ -312,13 +321,51 @@ function WebRtcHandler() {
     function createSocketIoPeerConnection() {
         // Enhanced ICE server configuration for restrictive networks
         const defaultIceServers = [
-            { urls: 'stun:stun.l.google.com:19302' },
+            // Primary STUN servers (Geometris)
             { urls: 'stun:camera.geometris.com:3478' },
+            { urls: 'stun:13.64.128.177:3478' }, // IPv4 fallback for camera.geometris.com
+
+            // UDP TURN servers (Geometris) - Standard WebRTC transport
             {
                 urls: 'turn:camera.geometris.com:3478',
                 username: 'devices',
                 credential: 'A82*ndcBX'
-            }
+            },
+            {
+                urls: 'turn:13.64.128.177:3478', // IPv4 fallback for camera.geometris.com
+                username: 'devices',
+                credential: 'A82*ndcBX'
+            },
+
+            // TCP TURN servers (Geometris) - Firewall-friendly fallback
+            // Port 8443 disguises TURN traffic, helping bypass restrictive firewalls
+            {
+                urls: 'turn:camera.geometris.com:8443?transport=tcp',
+                username: 'devices',
+                credential: 'A82*ndcBX'
+            },
+            {
+                urls: 'turn:13.64.128.177:8443?transport=tcp', // IPv4 fallback
+                username: 'devices',
+                credential: 'A82*ndcBX'
+            },
+
+            // TLS TURN servers (Geometris) - Encrypted fallback for maximum compatibility
+            // Port 5349 is standard TURNS (TURN over TLS)
+            {
+                urls: 'turns:camera.geometris.com:5349?transport=tcp',
+                username: 'devices',
+                credential: 'A82*ndcBX'
+            },
+            {
+                urls: 'turns:13.64.128.177:5349?transport=tcp', // IPv4 fallback
+                username: 'devices',
+                credential: 'A82*ndcBX'
+            },
+
+            // Public STUN servers (Google) - backup/fallback
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
         ];
 
         const iceServers = webRtcConfig.iceServers || defaultIceServers;
@@ -499,6 +546,14 @@ function WebRtcHandler() {
             webRtcPeer = null;
         }
 
+        // Clear any pending ICE candidates from failed connection
+        if (pendingIceCandidates.length > 0) {
+            debugLog('Clearing pending ICE candidates from failed connection', {
+                count: pendingIceCandidates.length
+            });
+            pendingIceCandidates = [];
+        }
+
         // Create new peer connection
         debugLog('Creating new peer connection for retry');
         createSocketIoPeerConnection();
@@ -544,6 +599,34 @@ function WebRtcHandler() {
                     debugLog('Remote description set successfully', {
                         newState: webRtcPeer.signalingState
                     });
+
+                    // Process queued ICE candidates now that remote description is set
+                    if (pendingIceCandidates.length > 0) {
+                        debugLog('Processing queued ICE candidates', {
+                            count: pendingIceCandidates.length
+                        });
+
+                        const candidatesToProcess = [...pendingIceCandidates];
+                        pendingIceCandidates = [];
+
+                        candidatesToProcess.forEach((candidate, index) => {
+                            webRtcPeer.addIceCandidate(new RTCIceCandidate(candidate))
+                                .then(() => {
+                                    debugLog('Queued ICE candidate added successfully', {
+                                        index: index + 1,
+                                        total: candidatesToProcess.length
+                                    });
+                                })
+                                .catch((err) => {
+                                    console.error('Error adding queued ICE candidate:', err);
+                                    debugLog('ERROR adding queued ICE candidate', {
+                                        error: err.message,
+                                        index: index + 1,
+                                        candidate: candidate
+                                    });
+                                });
+                        });
+                    }
 
                     if (description.type === 'offer' &&
                         (webRtcPeer.signalingState === 'have-remote-offer' ||
@@ -601,23 +684,27 @@ function WebRtcHandler() {
                 remoteDescriptionSet: !!webRtcPeer.remoteDescription
             });
 
-            // Only add ICE candidates after remote description is set
-            if (webRtcPeer.remoteDescription) {
-                webRtcPeer.addIceCandidate(new RTCIceCandidate(data.candidate))
-                    .then(() => {
-                        debugLog('ICE candidate added successfully');
-                    })
-                    .catch((err) => {
-                        console.error('ICE candidate error:', err);
-                        debugLog('ERROR adding ICE candidate', {
-                            error: err.message,
-                            candidate: data.candidate
-                        });
-                    });
-            } else {
-                debugLog('WARNING: Received ICE candidate before remote description was set, queuing...');
-                // You might want to queue these and add them later
+            // Queue candidates if remote description is not set yet
+            if (!webRtcPeer.remoteDescription) {
+                debugLog('Queuing ICE candidate - remote description not set yet', {
+                    queueLength: pendingIceCandidates.length + 1
+                });
+                pendingIceCandidates.push(data.candidate);
+                return;
             }
+
+            // Add the candidate immediately if remote description is already set
+            webRtcPeer.addIceCandidate(new RTCIceCandidate(data.candidate))
+                .then(() => {
+                    debugLog('ICE candidate added successfully');
+                })
+                .catch((err) => {
+                    console.error('ICE candidate error:', err);
+                    debugLog('ERROR adding ICE candidate', {
+                        error: err.message,
+                        candidate: data.candidate
+                    });
+                });
         }
     }
 
@@ -730,6 +817,7 @@ function WebRtcHandler() {
         apiKey = null;
         waitingForOffer = false;
         connectionRetryCount = 0;
+        pendingIceCandidates = [];
     }
 
     instance = {
